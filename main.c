@@ -52,6 +52,7 @@
 
 #include "bleUserConfig.h"
 
+
 // BLE user defined configuration
 bleUserCfg_t user0Cfg = BLE_USER_CFG;
 
@@ -97,6 +98,8 @@ int main()
     GAPRole_createTask();
     
     SimpleBLEPeripheral_createTask();
+    
+    UART_creatTask();
 
 #ifdef FEATURE_OAD
     {

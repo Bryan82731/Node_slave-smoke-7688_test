@@ -1,5 +1,4 @@
 /*
- * 自己客製化的board
  * Bopyright (c) 2014, Texas Instruments Incorporated
  * All rights reserved.
  *
@@ -64,10 +63,12 @@
 */
 #if defined(CC2650EM_7ID)
     #include "CC2650EM_7ID/Board.c"
-#elif defined(CC2650EM_5XD)
-    #include "CC2650EM_5XD/Board.c"
+//#elif defined(CC2650EM_5XD)
+//    #include "CC2650EM_5XD/Board.c"
 #elif defined(CC2650EM_4XS)
     #include "CC2650EM_4XS/Board.c"
-#else
-    #error "Must define either 'CC2650EM_7ID', 'CC2650EM_5XD', or 'CC2650EM_4XS'. Please set include path to point to appropriate CC2650EM device"
+#elif defined(SmokeNode_5XD)
+    #include "SmokeNode_5XD/Board.c"
+//#else
+//    #error "Must define either 'CC2650EM_7ID', 'CC2650EM_5XD', or 'CC2650EM_4XS'. Please set include path to point to appropriate CC2650EM device"
 #endif

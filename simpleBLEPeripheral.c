@@ -78,6 +78,15 @@
 #include "simpleBLEPeripheral.h"
 
 #include <ti/drivers/lcd/LCDDogm1286.h>
+#include <scif.h>
+#include <BIOS.h>
+
+Task_Struct my_UART_Task;
+Char my_UART_TaskStack[512];
+static Semaphore_Struct semScTaskAlert;
+int rxbuf[100];
+static PIN_Handle hSbpPins;
+bool start_flag = 0;
 
 /*********************************************************************
  * CONSTANTS
@@ -262,6 +271,8 @@ static uint8_t rspTxRetry = 0;
 
 static void SimpleBLEPeripheral_init( void );
 static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1);
+static void Uart_taskFxn(UArg a0, UArg a1);
+
 
 static uint8_t SimpleBLEPeripheral_processStackMsg(ICall_Hdr *pMsg);
 static uint8_t SimpleBLEPeripheral_processGATTMsg(gattMsgEvent_t *pMsg);
@@ -325,6 +336,73 @@ static oadTargetCBs_t simpleBLEPeripheral_oadCBs =
  * PUBLIC FUNCTIONS
  */
 
+
+void scCtrlReadyCallback(void) {
+
+} // scCtrlReadyCallback
+
+
+void scTaskAlertCallback(void) {
+
+    // Wake up the OS task
+    Semaphore_post(Semaphore_handle(&semScTaskAlert));
+
+    // Wait for an ALERT callback
+    Semaphore_pend(Semaphore_handle(&semScTaskAlert), BIOS_WAIT_FOREVER);
+
+    // Clear the ALERT interrupt source
+    scifClearAlertIntSource();
+
+    // Echo all characters currently in the RX FIFO
+    int rxFifoCount = scifUartGetRxFifoCount();
+
+    //Åª¥X³o¦¸buffer
+    for(int a=0;a<rxFifoCount;a++)
+     rxbuf[a] =(      (char) scifUartRxGetChar()      );
+
+    // Clear the events that triggered this
+    scifUartClearEvents();
+
+    // Acknowledge the alert event
+    scifAckAlertEvents();   
+
+    if(rxbuf[0] == 'O' && rxbuf[1] == 'K')
+    {
+      start_flag = 1;
+      PIN_setOutputValue(hSbpPins, Board_UA2_GREEN , 1);
+    }
+    
+    
+} // scTaskAlertCallback
+
+
+
+/*********************************************************************
+ * @fn      Uart_createTask
+ *
+ * @brief   Task creation function for the Simple BLE Peripheral.
+ *
+ * @param   None.
+ *
+ * @return  None.
+ */
+void UART_creatTask(void)
+{
+  Task_Params taskParams;
+
+  Task_Params_init(&taskParams);
+  taskParams.stack = my_UART_TaskStack;
+  taskParams.stackSize = sizeof(my_UART_TaskStack);
+  taskParams.priority = 3;
+  Task_construct(&my_UART_Task, Uart_taskFxn, &taskParams, NULL);
+
+  Semaphore_Params semParams;
+  Semaphore_Params_init(&semParams);
+  semParams.mode = Semaphore_Mode_BINARY;
+  Semaphore_construct(&semScTaskAlert, 0, &semParams);
+
+}
+
 /*********************************************************************
  * @fn      SimpleBLEPeripheral_createTask
  *
@@ -346,6 +424,43 @@ void SimpleBLEPeripheral_createTask(void)
 
   Task_construct(&sbpTask, SimpleBLEPeripheral_taskFxn, &taskParams, NULL);
 }
+
+
+/*********************************************************************
+ * @fn      Uart_taskFxn
+ *
+ * @brief   Task creation function for the Simple BLE Peripheral.
+ *
+ * @param   None.
+ *
+ * @return  None.
+ */
+static void Uart_taskFxn (UArg a0, UArg a1) {
+
+    // Initialize the Sensor Controller
+    scifOsalInit();
+    scifOsalRegisterCtrlReadyCallback(scCtrlReadyCallback);
+    scifOsalRegisterTaskAlertCallback(scTaskAlertCallback);
+    scifInit(&scifDriverSetup);
+
+    // Start the UART emulator
+    scifExecuteTasksOnceNbl(BV(SCIF_UART_EMULATOR_TASK_ID));
+
+    // Enable baud rate generation
+    scifUartSetBaudRate(57600);
+
+    // Enable RX (10 idle bit periods required before enabling start bit detection)
+    scifUartSetRxFifoThr(SCIF_UART_RX_FIFO_MAX_COUNT / 2);
+    scifUartSetRxTimeout(10 * 2);
+    scifUartSetRxEnableReqIdleCount(10 * 2);
+    scifUartRxEnable(1);
+
+    // Enable events (half full RX FIFO or 10 bit period timeout
+    scifUartSetEventMask(BV_SCIF_UART_ALERT_RX_FIFO_ABOVE_THR | BV_SCIF_UART_ALERT_RX_BYTE_TIMEOUT);
+
+
+}
+
 
 /*********************************************************************
  * @fn      SimpleBLEPeripheral_init
@@ -380,7 +495,7 @@ static void SimpleBLEPeripheral_init(void)
 
   // Create one-shot clocks for internal periodic events.
   Util_constructClock(&periodicClock, SimpleBLEPeripheral_clockHandler,
-                      SBP_PERIODIC_EVT_PERIOD, 0, false, SBP_PERIODIC_EVT);
+                      1000, 1000, true, SBP_PERIODIC_EVT);
   
 #ifndef SENSORTAG_HW
   Board_openLCD();
@@ -543,6 +658,10 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
   // Initialize application
   SimpleBLEPeripheral_init();
 
+  PIN_setOutputValue(hSbpPins, UA2_DIO8 , 1);
+  PIN_setOutputValue(hSbpPins, UA2_DIO7 , 1);
+  PIN_setOutputValue(hSbpPins, Board_UA2_GREEN , 0);
+  PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
   // Application main loop
   for (;;)
   {
@@ -608,7 +727,14 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
     if (events & SBP_PERIODIC_EVT)
     {
       events &= ~SBP_PERIODIC_EVT;
-
+      char start[30]={"setlon121.123456lat25.123456"};
+      start[28] = '\r';
+      start[29] = '\n';
+      
+      if(start_flag == 0)
+        scifUartTxPutChars(start,sizeof(start));
+      
+      
       Util_startClock(&periodicClock);
 
       // Perform periodic application task
@@ -930,6 +1056,7 @@ static void SimpleBLEPeripheral_processStateChangeEvt(gaprole_States_t newState)
 
     case GAPROLE_CONNECTED:
       {
+        PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 1);
         uint8_t peerAddress[B_ADDR_LEN];
 
         GAPRole_GetParameter(GAPROLE_CONN_BD_ADDR, peerAddress);
@@ -968,6 +1095,7 @@ static void SimpleBLEPeripheral_processStateChangeEvt(gaprole_States_t newState)
       break;
 
     case GAPROLE_WAITING:
+      PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
       Util_stopClock(&periodicClock);
       
       SimpleBLEPeripheral_freeAttRsp(bleNotConnected);
@@ -981,6 +1109,7 @@ static void SimpleBLEPeripheral_processStateChangeEvt(gaprole_States_t newState)
       break;
 
     case GAPROLE_WAITING_AFTER_TIMEOUT:
+      PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
       SimpleBLEPeripheral_freeAttRsp(bleNotConnected);
       
       LCD_WRITE_STRING("Timed Out", LCD_PAGE2);
@@ -1039,7 +1168,7 @@ static void SimpleBLEPeripheral_charValueChangeCB(uint8_t paramID)
 static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 {
 #ifndef FEATURE_OAD
-  uint8_t newValue;
+  char newValue[20];
 
   switch(paramID)
   {
@@ -1051,7 +1180,9 @@ static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 
     case SIMPLEPROFILE_CHAR3:
       SimpleProfile_GetParameter(SIMPLEPROFILE_CHAR3, &newValue);
-
+      PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
+      scifUartTxPutChars(newValue,sizeof(newValue));
+      
       LCD_WRITE_STRING_VALUE("Char 3:", (uint16_t)newValue, 10, LCD_PAGE4);
       break;
 
