@@ -1169,7 +1169,7 @@ static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 {
 #ifndef FEATURE_OAD
   char newValue[20];
-
+  char change_to_char[62];
   switch(paramID)
   {
     case SIMPLEPROFILE_CHAR1:
@@ -1181,7 +1181,22 @@ static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
     case SIMPLEPROFILE_CHAR3:
       SimpleProfile_GetParameter(SIMPLEPROFILE_CHAR3, &newValue);
       PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
-      scifUartTxPutChars(newValue,sizeof(newValue));
+      
+      change_to_char[0] = '$';
+      for(int a = 1; a<=20; a++)
+      {
+        change_to_char[2*a-1] = newValue[a-1] & 0x0F;
+        change_to_char[2*a] = newValue[a-1] & 0xF0;
+      }
+      for(int a = 41; a<60;a++)
+      {
+        change_to_char[a] = '0';
+      }
+      change_to_char[60] = '\r';
+      change_to_char[61] = '\n';
+
+      
+      scifUartTxPutChars(change_to_char,sizeof(change_to_char));
       
       LCD_WRITE_STRING_VALUE("Char 3:", (uint16_t)newValue, 10, LCD_PAGE4);
       break;
