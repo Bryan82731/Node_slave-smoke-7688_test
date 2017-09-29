@@ -87,7 +87,8 @@ static Semaphore_Struct semScTaskAlert;
 int rxbuf[100];
 static PIN_Handle hSbpPins;
 bool start_flag = 0;
-
+char newValue[20];
+char change_to_char[63];
 /*********************************************************************
  * CONSTANTS
  */
@@ -1168,8 +1169,7 @@ static void SimpleBLEPeripheral_charValueChangeCB(uint8_t paramID)
 static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 {
 #ifndef FEATURE_OAD
-  char newValue[20];
-  char change_to_char[62];
+
   switch(paramID)
   {
     case SIMPLEPROFILE_CHAR1:
@@ -1185,18 +1185,35 @@ static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
       change_to_char[0] = '$';
       for(int a = 1; a<=20; a++)
       {
-        change_to_char[2*a-1] = newValue[a-1] & 0x0F;
-        change_to_char[2*a] = newValue[a-1] & 0xF0;
+        change_to_char[2*a-1] = (newValue[a-1] & 0x0F) + 0x30;
+        change_to_char[2*a] = ((newValue[a-1] & 0xF0)>>4) + 0x30;
       }
-      for(int a = 41; a<60;a++)
+      
+      for(int a=1;a<60;a++)
+      {
+        if(change_to_char[a] == 0x41)
+          change_to_char[a] = 'A';
+        if(change_to_char[a] == 0x42)
+          change_to_char[a] = 'B';
+        if(change_to_char[a] == 0x43)
+          change_to_char[a] = 'C';
+        if(change_to_char[a] == 0x44)
+          change_to_char[a] = 'D';
+        if(change_to_char[a] == 0x45)
+          change_to_char[a] = 'E';
+        if(change_to_char[a] == 0x46)
+          change_to_char[a] = 'F';
+      }
+      for(int a = 41; a<61;a++)
       {
         change_to_char[a] = '0';
       }
-      change_to_char[60] = '\r';
-      change_to_char[61] = '\n';
+      
+      change_to_char[61] = '\r';
+      change_to_char[62] = '\n';
 
       
-      scifUartTxPutChars(change_to_char,sizeof(change_to_char));
+      scifUartTxPutChars(change_to_char,63);
       
       LCD_WRITE_STRING_VALUE("Char 3:", (uint16_t)newValue, 10, LCD_PAGE4);
       break;
