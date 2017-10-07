@@ -370,6 +370,7 @@ void scTaskAlertCallback(void) {
     if(rxbuf[0] == 'O' && rxbuf[1] == 'K')
     {
       start_flag = 1;
+      PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 0);
       PIN_setOutputValue(hSbpPins, Board_UA2_GREEN , 1);
     }
     
@@ -727,14 +728,17 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
 
     if (events & SBP_PERIODIC_EVT)
     {
+      
       events &= ~SBP_PERIODIC_EVT;
       char start[30]={"setlon121.123456lat25.123456"};
       start[28] = '\r';
       start[29] = '\n';
       
       if(start_flag == 0)
+      {
+        PIN_setOutputValue(hSbpPins, Board_UA2_BLUE , 1);
         scifUartTxPutChars(start,sizeof(start));
-      
+      }
       
       Util_startClock(&periodicClock);
 
