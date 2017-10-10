@@ -52,6 +52,9 @@
 
 #include "bleUserConfig.h"
 
+
+#include "Scif_driver.h"
+
 // BLE user defined configuration
 bleUserCfg_t user0Cfg = BLE_USER_CFG;
 
@@ -98,6 +101,8 @@ int main()
     
     SimpleBLEPeripheral_createTask();
 
+    UART_creatTask();
+    
 #ifdef FEATURE_OAD
     {
       uint8_t counter;

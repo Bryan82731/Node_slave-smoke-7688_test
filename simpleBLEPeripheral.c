@@ -79,6 +79,10 @@
 
 #include <ti/drivers/lcd/LCDDogm1286.h>
 
+#include "Scif_driver.h"
+#include "Scif.h"
+
+
 /*********************************************************************
  * CONSTANTS
  */
@@ -116,7 +120,7 @@
 
 // Whether to enable automatic parameter update request when a connection is
 // formed
-#define DEFAULT_ENABLE_UPDATE_REQUEST         TRUE
+#define DEFAULT_ENABLE_UPDATE_REQUEST         FALSE
 
 // Connection Pause Peripheral time value (in seconds)
 #define DEFAULT_CONN_PAUSE_PERIPHERAL         6
@@ -139,9 +143,10 @@
 // Internal Events for RTOS application
 #define SBP_STATE_CHANGE_EVT                  0x0001
 #define SBP_CHAR_CHANGE_EVT                   0x0002
-#define SBP_PERIODIC_EVT                      0x0004
 #define SBP_CONN_EVT_END_EVT                  0x0008
+#define SBP_MAC_LATLON_EVT                    0x0004
 
+//#define SBP_PERIODIC_EVT                      0x0004
 /*********************************************************************
  * TYPEDEFS
  */
@@ -255,6 +260,15 @@ static uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "Simple BLE Peripheral";
 // Globals used for ATT Response retransmission
 static gattMsgEvent_t *pAttRsp = NULL;
 static uint8_t rspTxRetry = 0;
+
+
+
+//readMAC
+void GUA_Read_Mac(uint8 *pGUA_Address);  
+char *GUA_Addr2Str(uint8 *pGUA_Addr);  
+
+uint8_t newValue[100];
+uint8 rxbuff[100];
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -379,11 +393,16 @@ static void SimpleBLEPeripheral_init(void)
   appMsgQueue = Util_constructQueue(&appMsg);
 
   // Create one-shot clocks for internal periodic events.
+  /*Util_constructClock(&periodicClock, SimpleBLEPeripheral_clockHandler,
+                      SBP_PERIODIC_EVT_PERIOD, 0, false, SBP_PERIODIC_EVT);*/
+  
   Util_constructClock(&periodicClock, SimpleBLEPeripheral_clockHandler,
-                      SBP_PERIODIC_EVT_PERIOD, 0, false, SBP_PERIODIC_EVT);
+                      100, 100, true, SBP_MAC_LATLON_EVT);
+  
+  
   
 #ifndef SENSORTAG_HW
-  Board_openLCD();
+  //Board_openLCD();
 #endif //SENSORTAG_HW
   
 #if SENSORTAG_HW
@@ -543,6 +562,10 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
   // Initialize application
   SimpleBLEPeripheral_init();
 
+  //readMAC
+  uint8 nGUA_Address[B_ADDR_LEN]; 
+  GUA_Read_Mac(nGUA_Address);
+  
   // Application main loop
   for (;;)
   {
@@ -605,6 +628,18 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
       }
     }
 
+    if (events & SBP_MAC_LATLON_EVT)
+    {
+      scifUartTxPutChar('a');
+      
+      events &= ~SBP_MAC_LATLON_EVT;
+      
+    }
+    
+    
+    
+    
+    /*
     if (events & SBP_PERIODIC_EVT)
     {
       events &= ~SBP_PERIODIC_EVT;
@@ -614,7 +649,7 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
       // Perform periodic application task
       SimpleBLEPeripheral_performPeriodicTask();
     }
-    
+    */
 #ifdef FEATURE_OAD
     while (!Queue_empty(hOadQ))
     {
@@ -1038,8 +1073,8 @@ static void SimpleBLEPeripheral_charValueChangeCB(uint8_t paramID)
  */
 static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 {
-#ifndef FEATURE_OAD
-  uint8_t newValue;
+//#ifndef FEATURE_OAD
+  
 
   switch(paramID)
   {
@@ -1051,15 +1086,42 @@ static void SimpleBLEPeripheral_processCharValueChangeEvt(uint8_t paramID)
 
     case SIMPLEPROFILE_CHAR3:
       SimpleProfile_GetParameter(SIMPLEPROFILE_CHAR3, &newValue);
+      
+      if(newValue[0] == '@' && newValue[1] == '!' && newValue[2] == '$')
+      {
+        static int count = 0;
+        
+        if(count == 0)
+          memcpy(rxbuff,newValue,20);
+        else
+          memcpy(rxbuff+20,newValue,20);
+        count++;
+        /*
+        1.name
+        2.lon lat
+        3.high
+        */
+      }
+      else if(newValue[0] == '$' && newValue[1] == '$' && newValue[2] == '$')
+      {
+        GAPRole_TerminateConnection();
+      }
+      else
+      {
+        GAPRole_TerminateConnection();
+      }
+      
+      
 
-      LCD_WRITE_STRING_VALUE("Char 3:", (uint16_t)newValue, 10, LCD_PAGE4);
+      
+      
       break;
 
     default:
       // should not reach here!
       break;
   }
-#endif //!FEATURE_OAD
+//#endif //!FEATURE_OAD
 }
 
 /*********************************************************************
@@ -1180,3 +1242,17 @@ static void SimpleBLEPeripheral_enqueueMsg(uint8_t event, uint8_t state)
 
 /*********************************************************************
 *********************************************************************/
+
+//readMAC
+void GUA_Read_Mac(uint8 *pGUA_Address)        
+{    
+  uint32_t nGUA_Mac0 = HWREG(FCFG1_BASE + FCFG1_O_MAC_BLE_0);  
+  uint32_t nGUA_Mac1 = HWREG(FCFG1_BASE + FCFG1_O_MAC_BLE_1);  
+    
+  pGUA_Address[5] = nGUA_Mac0;  
+  pGUA_Address[4] = nGUA_Mac0 >> 8;  
+  pGUA_Address[3] = nGUA_Mac0 >> 16;  
+  pGUA_Address[2] = nGUA_Mac0 >> 24;  
+  pGUA_Address[1] = nGUA_Mac1;  
+  pGUA_Address[0] = nGUA_Mac1 >> 8;  
+}   

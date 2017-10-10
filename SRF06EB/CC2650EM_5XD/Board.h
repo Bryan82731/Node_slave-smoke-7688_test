@@ -74,33 +74,20 @@ extern PIN_Config BoardGpioInitTable[];
  *      <board signal alias>                <pin mapping>
  */
 /* Leds */
-#define Board_LED_ON                        1 /* LEDs on CC2650 are active high */
-#define Board_LED_OFF                       0
-#define Board_LED1                          PIN_UNASSIGNED
-#define Board_LED2                          PIN_UNASSIGNED
-#define Board_LED3                          IOID_2          /* RF1.2  */
-#define Board_LED4                          IOID_3          /* RF1.4  */
-/* Button Board */
-#define Board_KEY_SELECT                    IOID_9          /* RF1.14 */
-#define Board_KEY_UP                        IOID_6          /* RF1.10 */
-#define Board_KEY_DOWN                      IOID_4          /* RF1.12 */
-#define Board_KEY_LEFT                      IOID_5          /* RF1.6  */
-#define Board_KEY_RIGHT                     IOID_13         /* RF1.8  */
-/* LCD  Board */
-#define Board_3V3_EN                        IOID_14         /* RF1.15 */
-#define Board_LCD_MODE                      IOID_7          /* RF1.11 */
-#define Board_LCD_RST                       PIN_UNASSIGNED
-#define Board_LCD_CSN                       IOID_8          /* RF1.17 */
+#define Board_UA9_GREEN                     IOID_0
+#define Board_UA9_BLUE                      IOID_1      
+
+
 /* UART Board */
-#define Board_UART_RX                       IOID_1          /* RF1.7  */
-#define Board_UART_TX                       IOID_0          /* RF1.9  */
+#define Board_UART_RX                       IOID_3          
+#define Board_UART_TX                       IOID_4          
 #define Board_UART_CTS                      PIN_UNASSIGNED
 #define Board_UART_RTS                      PIN_UNASSIGNED
 /* SPI Board */
-#define Board_SPI0_MISO                     IOID_12         /* RF1.20 */
-#define Board_SPI0_MOSI                     IOID_11         /* RF1.18 */
-#define Board_SPI0_CLK                      IOID_10         /* RF1.16 */
-#define Board_SPI0_CSN                      IOID_9          /* RF1.14 */
+#define Board_SPI0_MISO                     PIN_UNASSIGNED       
+#define Board_SPI0_MOSI                     PIN_UNASSIGNED        
+#define Board_SPI0_CLK                      PIN_UNASSIGNED         
+#define Board_SPI0_CSN                      PIN_UNASSIGNED          
 #define Board_SPI1_MISO                     PIN_UNASSIGNED
 #define Board_SPI1_MOSI                     PIN_UNASSIGNED
 #define Board_SPI1_CLK                      PIN_UNASSIGNED
