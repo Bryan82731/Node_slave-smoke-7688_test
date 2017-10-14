@@ -79,6 +79,8 @@
 
 #include <ti/drivers/lcd/LCDDogm1286.h>
 
+
+#include <ti/drivers/pin/PINCC26XX.h>//wake up¬ÛÃö
 /*********************************************************************
  * CONSTANTS
  */
@@ -141,6 +143,8 @@
 #define SBP_CHAR_CHANGE_EVT                   0x0002
 #define SBP_PERIODIC_EVT                      0x0004
 #define SBP_CONN_EVT_END_EVT                  0x0008
+#define SBP_BTN_EVT                           0x0010
+
 
 /*********************************************************************
  * TYPEDEFS
@@ -256,9 +260,14 @@ static uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "Simple BLE Peripheral";
 static gattMsgEvent_t *pAttRsp = NULL;
 static uint8_t rspTxRetry = 0;
 
+static PIN_Handle hSbpPins;
+static PIN_State sbpPins;
+
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
+
+static void buttonHwiFxn(PIN_Handle hPin, PIN_Id pinId);//wake up
 
 static void SimpleBLEPeripheral_init( void );
 static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1);
@@ -379,11 +388,11 @@ static void SimpleBLEPeripheral_init(void)
   appMsgQueue = Util_constructQueue(&appMsg);
 
   // Create one-shot clocks for internal periodic events.
-  Util_constructClock(&periodicClock, SimpleBLEPeripheral_clockHandler,
-                      SBP_PERIODIC_EVT_PERIOD, 0, false, SBP_PERIODIC_EVT);
+  /*Util_constructClock(&periodicClock, SimpleBLEPeripheral_clockHandler,
+                      SBP_PERIODIC_EVT_PERIOD, 5000, true, SBP_PERIODIC_EVT);*/
   
 #ifndef SENSORTAG_HW
-  Board_openLCD();
+  //Board_openLCD();
 #endif //SENSORTAG_HW
   
 #if SENSORTAG_HW
@@ -396,13 +405,12 @@ static void SimpleBLEPeripheral_init(void)
 
   // Setup the GAP Peripheral Role Profile
   {
-    // For all hardware platforms, device starts advertising upon initialization
-    uint8_t initialAdvertEnable = TRUE;
+
 
     // By setting this to zero, the device will go into the waiting state after
     // being discoverable for 30.72 second, and will not being advertising again
     // until the enabler is set back to TRUE
-    uint16_t advertOffTime = 0;
+    //uint16_t advertOffTime = 0;
 
     uint8_t enableUpdateRequest = DEFAULT_ENABLE_UPDATE_REQUEST;
     uint16_t desiredMinInterval = DEFAULT_DESIRED_MIN_CONN_INTERVAL;
@@ -411,10 +419,14 @@ static void SimpleBLEPeripheral_init(void)
     uint16_t desiredConnTimeout = DEFAULT_DESIRED_CONN_TIMEOUT;
 
     // Set the GAP Role Parameters
+    
+    // For all hardware platforms, device starts advertising upon initialization
+    uint8_t initialAdvertEnable = FALSE;
+    
     GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof(uint8_t),
                          &initialAdvertEnable);
-    GAPRole_SetParameter(GAPROLE_ADVERT_OFF_TIME, sizeof(uint16_t),
-                         &advertOffTime);
+   /* GAPRole_SetParameter(GAPROLE_ADVERT_OFF_TIME, sizeof(uint16_t),
+                         &advertOffTime);*/
 
     GAPRole_SetParameter(GAPROLE_SCAN_RSP_DATA, sizeof(scanRspData),
                          scanRspData);
@@ -527,6 +539,17 @@ static void SimpleBLEPeripheral_init(void)
 #else
   LCD_WRITE_STRING("BLE Peripheral", LCD_PAGE0);
 #endif // FEATURE_OAD
+  
+  hSbpPins = PIN_open(&sbpPins, BoardGpioInitTable);
+  PIN_registerIntCb(hSbpPins, buttonHwiFxn);
+  PIN_setConfig(hSbpPins, PIN_BM_IRQ, Board_INPUT | PIN_IRQ_NEGEDGE);
+  PIN_setConfig(hSbpPins, PINCC26XX_BM_WAKEUP, Board_INPUT|PINCC26XX_WAKEUP_NEGEDGE);
+  
+  PIN_setOutputValue(hSbpPins, Board_GREEN , 1);
+  Task_sleep(0.5*100000);
+  PIN_setOutputValue(hSbpPins, Board_GREEN , 0);
+  
+  
 }       
 
 /*********************************************************************
@@ -579,8 +602,7 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
           else
           {
             // Process inter-task message
-            safeToDealloc = SimpleBLEPeripheral_processStackMsg(
-                                                             (ICall_Hdr *)pMsg);
+            safeToDealloc = SimpleBLEPeripheral_processStackMsg((ICall_Hdr *)pMsg);
           }
         }
 
@@ -605,6 +627,26 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
       }
     }
 
+    if(events & SBP_BTN_EVT)
+    {
+      events &= ~SBP_BTN_EVT;
+      uint8_t initialAdvertEnable = TRUE;
+      
+      GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof(uint8_t),
+                           &initialAdvertEnable);      
+      
+      PIN_setOutputValue(hSbpPins, Board_RED , 1);
+      Task_sleep(3*100000);
+      
+      PIN_setOutputValue(hSbpPins, Board_RED , 0);
+      initialAdvertEnable = FALSE;
+      
+      GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof(uint8_t),
+                     &initialAdvertEnable);    
+      
+    }
+    
+    /*
     if (events & SBP_PERIODIC_EVT)
     {
       events &= ~SBP_PERIODIC_EVT;
@@ -614,7 +656,7 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
       // Perform periodic application task
       SimpleBLEPeripheral_performPeriodicTask();
     }
-    
+    */
 #ifdef FEATURE_OAD
     while (!Queue_empty(hOadQ))
     {
@@ -1151,6 +1193,16 @@ static void SimpleBLEPeripheral_clockHandler(UArg arg)
   // Wake up the application.
   Semaphore_post(sem);
 }
+
+
+static void buttonHwiFxn(PIN_Handle hPin, PIN_Id pinId) 
+{ // set event in SBP task to process outside of hwi context 
+  events |= SBP_BTN_EVT; 
+  // Wake up the application. 
+  Semaphore_post(sem); 
+}
+
+
 
 /*********************************************************************
  * @fn      SimpleBLEPeripheral_enqueueMsg

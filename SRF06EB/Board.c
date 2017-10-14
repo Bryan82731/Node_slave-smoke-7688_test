@@ -66,8 +66,10 @@
     #include "CC2650EM_7ID/Board.c"
 #elif defined(CC2650EM_5XD)
     #include "CC2650EM_5XD/Board.c"
-#elif defined(CC2650EM_4XS)
-    #include "CC2650EM_4XS/Board.c"
-#else
-    #error "Must define either 'CC2650EM_7ID', 'CC2650EM_5XD', or 'CC2650EM_4XS'. Please set include path to point to appropriate CC2650EM device"
+/*#elif defined(CC2650EM_4XS)
+    #include "CC2650EM_4XS/Board.c"*/
+#elif defined(smoke)
+    #include "smoke/Board.c"
+/*#else
+    #error "Must define either 'CC2650EM_7ID', 'CC2650EM_5XD', or 'CC2650EM_4XS'. Please set include path to point to appropriate CC2650EM device"*/
 #endif
