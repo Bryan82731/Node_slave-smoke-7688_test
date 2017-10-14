@@ -51,7 +51,7 @@ void scTaskAlertCallback(void) {
     // Acknowledge the alert event
     scifAckAlertEvents();   
  
-    for(int a=0;a<rxFifoCount;a++)
+    for(int a=0;a<rxFifoCount;a++)//²MªÅ
       rxbuf[a]=0;
 } // scTaskAlertCallback
 
