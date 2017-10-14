@@ -8,14 +8,14 @@
 #include <ti/sysbios/knl/Semaphore.h>
 #include <ti/sysbios/knl/Queue.h>
 #include "bcomdef.h"
-
-
+#include "hci_tl.h"
 
 #include <scif.h>
 #include <BIOS.h>
 #include <scif_driver.h>
 
 
+extern Clock_Struct periodicClock;
 Task_Struct my_UART_Task;
 Char my_UART_TaskStack[512];
 Semaphore_Struct semScTaskAlert;
@@ -45,6 +45,20 @@ void scTaskAlertCallback(void) {
     for(int a=0;a<rxFifoCount;a++)
      rxbuf[a] =(      (char) scifUartRxGetChar()      );
 
+    
+    if(rxbuf[0] == 'O' && rxbuf[1] == 'K')//代表經緯度和MAC已給出去
+    {
+      
+      Util_stopClock(&periodicClock);
+    }
+    else if(rxbuf[0] == '$')//代表有資料進來
+    {
+    
+    }
+    
+    
+    
+    
     // Clear the events that triggered this
     scifUartClearEvents();
 

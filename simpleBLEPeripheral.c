@@ -168,7 +168,7 @@ static ICall_EntityID selfEntity;
 static ICall_Semaphore sem;
 
 // Clock instances for internal periodic events.
-static Clock_Struct periodicClock;
+Clock_Struct periodicClock;
 
 // Queue object used for app messages
 static Queue_Struct appMsg;
@@ -563,8 +563,10 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
   SimpleBLEPeripheral_init();
 
   //readMAC
-  uint8 nGUA_Address[B_ADDR_LEN]; 
+  uint8 nGUA_Address[B_ADDR_LEN];
+  char mac[6];
   GUA_Read_Mac(nGUA_Address);
+  memcpy(mac,nGUA_Address,6);
   
   // Application main loop
   for (;;)
@@ -630,7 +632,7 @@ static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1)
 
     if (events & SBP_MAC_LATLON_EVT)
     {
-      scifUartTxPutChar('a');
+      scifUartTxPutChars(mac,6);
       
       events &= ~SBP_MAC_LATLON_EVT;
       
