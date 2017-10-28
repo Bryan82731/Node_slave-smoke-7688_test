@@ -500,7 +500,7 @@ static void SimpleBLEPeripheral_init(void)
                       1000, 1000, true, SBP_PERIODIC_EVT);
   
 #ifndef SENSORTAG_HW
-  Board_openLCD();
+  //Board_openLCD();
 #endif //SENSORTAG_HW
   
 #if SENSORTAG_HW
