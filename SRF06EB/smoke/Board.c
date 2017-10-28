@@ -52,7 +52,7 @@
 #include <ti/drivers/PIN.h>
 #include "Board.h"
 
-#include <ti/drivers/pin/PINCC26XX.h>//wake up相關
+#include <ti/drivers/pin/PINCC26XX.h>//WAKE UP相關
 
 
 
@@ -64,7 +64,7 @@
  *  configured in this table.
 */
 PIN_Config BoardGpioInitTable[] = {
-    Board_INPUT | PIN_INPUT_EN | PIN_NOPULL |PINCC26XX_WAKEUP_NEGEDGE,   
+    Board_INPUT | PIN_INPUT_EN | PIN_NOPULL |PINCC26XX_WAKEUP_NEGEDGE,   //WAKE UP相關
     Board_GREEN | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW   | PIN_PUSHPULL,
     Board_RED   | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW   | PIN_PUSHPULL,
     Board_V     | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW   | PIN_PUSHPULL,                           //喚醒

@@ -80,7 +80,7 @@
 #include <ti/drivers/lcd/LCDDogm1286.h>
 
 
-#include <ti/drivers/pin/PINCC26XX.h>//wake up相關
+#include <ti/drivers/pin/PINCC26XX.h>//WAKE UP相關
 /*********************************************************************
  * CONSTANTS
  */
@@ -267,7 +267,7 @@ static PIN_State sbpPins;
  * LOCAL FUNCTIONS
  */
 
-static void buttonHwiFxn(PIN_Handle hPin, PIN_Id pinId);//wake up
+static void buttonHwiFxn(PIN_Handle hPin, PIN_Id pinId);//WAKE UP相關
 
 static void SimpleBLEPeripheral_init( void );
 static void SimpleBLEPeripheral_taskFxn(UArg a0, UArg a1);
@@ -540,6 +540,7 @@ static void SimpleBLEPeripheral_init(void)
   LCD_WRITE_STRING("BLE Peripheral", LCD_PAGE0);
 #endif // FEATURE_OAD
   
+  //WAKE UP相關
   hSbpPins = PIN_open(&sbpPins, BoardGpioInitTable);
   PIN_registerIntCb(hSbpPins, buttonHwiFxn);
   PIN_setConfig(hSbpPins, PIN_BM_IRQ, Board_INPUT | PIN_IRQ_NEGEDGE);
