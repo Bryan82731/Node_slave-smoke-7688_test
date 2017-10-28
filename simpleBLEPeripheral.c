@@ -383,7 +383,7 @@ static void SimpleBLEPeripheral_init(void)
                       SBP_PERIODIC_EVT_PERIOD, 0, false, SBP_PERIODIC_EVT);
   
 #ifndef SENSORTAG_HW
-  Board_openLCD();
+  //Board_openLCD();
 #endif //SENSORTAG_HW
   
 #if SENSORTAG_HW
